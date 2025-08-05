@@ -92,7 +92,7 @@ public class AccountController implements AccountApi {
                 BankAccountResponse.SortCodeEnum.fromValue(bankAccount.getSortCode()),
                 bankAccount.getName(),
                 BankAccountResponse.AccountTypeEnum.fromValue(bankAccount.getAccountType()),
-                bankAccount.getBalance().doubleValue(),
+                bankAccount.getBalance(),
                 BankAccountResponse.CurrencyEnum.fromValue(bankAccount.getCurrency()),
                 OffsetDateTime.ofInstant(bankAccount.getCreatedOn(), ZoneId.systemDefault()),
                 OffsetDateTime.ofInstant(bankAccount.getLastUpdatedOn(), ZoneId.systemDefault())

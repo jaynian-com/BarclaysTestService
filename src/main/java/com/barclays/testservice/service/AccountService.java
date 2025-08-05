@@ -8,7 +8,6 @@ import com.barclays.testservice.repository.BankAccountRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -24,7 +23,7 @@ public class AccountService {
         newBankAccount.setAccountNumber(getNextBankAccountId());
         newBankAccount.setUserId(authUserId);
         newBankAccount.setSortCode(BankAccountResponse.SortCodeEnum._10_10_10.getValue());
-        newBankAccount.setBalance(BigDecimal.ZERO);
+        newBankAccount.setBalance(0.0);
         newBankAccount.setCurrency(BankAccountResponse.CurrencyEnum.GBP.getValue());
         return bankAccountRepository.save(newBankAccount);
     }
@@ -66,6 +65,10 @@ public class AccountService {
         checkUserIdAllowed(fetchedBankAccount, authUserId);
 
         bankAccountRepository.deleteById(accountNumber);
+    }
+
+    public boolean checkUserHasBankAccounts(String authUserId) {
+        return bankAccountRepository.existsByUserId(authUserId);
     }
 
 

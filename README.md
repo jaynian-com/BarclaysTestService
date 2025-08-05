@@ -1,10 +1,13 @@
-## BARCLAYS 'TAKE HOME CODING TEST' API SERVICE APPLICATION 
+### BARCLAYS 'TAKE HOME CODING TEST' API SERVICE APPLICATION 
 
-### TODO:
+#### NOTES:
 
-* Finish User Controller Tests
-* Implement Account and Transaction Controller Tests
-* Implement Reference field population on Transaction ?
-* Field validation is handled by 'org.openapitools' generated schemas.
-Perhaps some further spring based validation should be implemented?
+* To build and run tests `mvn package`
+* To run `mvn spring-boot:run` 
+* Swagger UI is enabled (i.e. http://localhost:8080/swagger-ui/index.html)
+* H2 Console is enabled (i.e. http://localhost:8080/h2-console/login.jsp Login: sa/password)
+* All scenarios detailed in 'Take home coding test' document should be covered via Mock MVC controller tests (see `src/test/java/com/barclays/testservice/controller/*` )
+
+#### TODO:
+* Transaction Reference field is not implemented and hardcoded to 'N/A' 
 

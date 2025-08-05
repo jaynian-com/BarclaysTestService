@@ -75,7 +75,6 @@ public class TransactionController implements TransactionApi {
                 TransactionResponse.TypeEnum.fromValue(transaction.getType()),
                 OffsetDateTime.ofInstant(transaction.getCreatedOn(), ZoneId.systemDefault())
         );
-
         response.setUserId(getAuthUserId());
         response.setReference("N/A");
         return response;

@@ -2,6 +2,7 @@ package com.barclays.testservice.controller;
 
 import com.barclays.testservice.model.*;
 import com.barclays.testservice.repository.AddressRepository;
+import com.barclays.testservice.repository.BankAccountRepository;
 import com.barclays.testservice.repository.UserRepository;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,8 +25,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -35,6 +35,7 @@ class UserControllerTest {
     private static final String USER_URL = "/v1/users";
     private static final String AUTHED_USER_ID = "usr-123";
     private static final String OTHER_USER_ID = "usr-456";
+    private static final String DUMMY_TOKEN = "DUMMY-TOKEN";
 
     @Autowired
     private MockMvc mockMvc;
@@ -47,6 +48,9 @@ class UserControllerTest {
 
     @MockitoBean
     private AddressRepository mockAddressRepository;
+
+    @MockitoBean
+    private BankAccountRepository mockBankAccountRepository;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -68,6 +72,9 @@ class UserControllerTest {
         when(jwtDecoder.decode(any())).thenReturn(jwt);
     }
 
+    /*
+        CREATE A USER SCENARIOS
+     */
 
     // Scenario: Create a new user
     @Test
@@ -170,12 +177,16 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.detail").value("Invalid request content."));
     }
 
+
+    /*
+        FETCH A USER SCENARIOS
+     */
+
     // Scenario: User wants to fetch their details
     @Test
     void should_fetchUser_when_validDetailsSuppliedAndAuthed() throws Exception {
         // GIVEN
         var timestamp = Instant.now();
-        var dummyToken = "DUMMY-TOKEN";
 
         // WHEN-THEN
         var fetchedUser = User.builder()
@@ -217,7 +228,7 @@ class UserControllerTest {
         mockMvc.perform(get(USER_URL + "/" + AUTHED_USER_ID)
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + dummyToken)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN)
                 )
                 .andExpect(status().is(200))
                 .andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
@@ -227,14 +238,11 @@ class UserControllerTest {
     // Scenario: User wants to fetch the details of another user
     @Test
     void should_notFetchUser_when_otherUserIdSuppliedAndAuthed() throws Exception {
-        // GIVEN
-        var dummyToken = "DUMMY-TOKEN";
-
-        // WHEN-THEN
+        // GIVEN-WHEN-THEN
         mockMvc.perform(get(USER_URL + "/" + OTHER_USER_ID)
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + dummyToken)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN)
                 )
                 .andExpect(status().is(403))
                 .andExpect(jsonPath("$.message").value("The user is not allowed to access the transaction"));
@@ -243,31 +251,216 @@ class UserControllerTest {
     // Scenario: User wants to fetch the details of a none-existent user
     @Test
     void should_notFetchUser_when_userNotExistsAndAuthed() throws Exception {
-        // GIVEN
-        var dummyToken = "DUMMY-TOKEN";
-
-        // WHEN-THEN
+        // GIVEN-WHEN-THEN
         when(mockUserRepository.findById(AUTHED_USER_ID)).thenReturn(Optional.empty());
 
         mockMvc.perform(get(USER_URL + "/" + AUTHED_USER_ID)
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + dummyToken)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN)
                 )
                 .andExpect(status().is(404))
                 .andExpect(jsonPath("$.message").value("User was not found"));
     }
 
+    /*
+        UPDATE A USER SCENARIOS
+     */
 
-    // TODO: DELETE USER SCENARIOS
+    // Scenario: User wants to update their user details
     @Test
-    void deleteUserByID() {
+    void should_updateUser_when_validDetailsSuppliedAndAuthed() throws Exception {
+        // GIVEN
+        var timestamp = Instant.now();
+
+        var userRequest = new UpdateUserRequest();
+        userRequest.setName("Updated Test User");
+        userRequest.setAddress(new CreateUserRequestAddress());
+        userRequest.getAddress().setLine1("Updated line1");
+        userRequest.getAddress().setTown("Updated town");
+        userRequest.getAddress().setCounty("Updated county");
+        userRequest.getAddress().setPostcode("Updated postcode");
+        userRequest.setPhoneNumber("0987654321");
+        userRequest.setEmail("your@email.com");
+
+        var notUpdatedUser = User.builder()
+                .id(AUTHED_USER_ID)
+                .name("Test User")
+                .address(Address.builder()
+                        .id("adr-123")
+                        .line1("line1")
+                        .town("town")
+                        .county("county")
+                        .postcode("postcode")
+                        .createdOn(timestamp)
+                        .lastUpdatedOn(timestamp)
+                        .build()
+                ).phoneNumber("0123456789")
+                .email("my@email.com")
+                .createdOn(timestamp)
+                .lastUpdatedOn(timestamp)
+                .build();
+
+        var updatedUser = User.builder()
+                .id(AUTHED_USER_ID)
+                .name(userRequest.getName())
+                .address(Address.builder()
+                        .id("adr-123")
+                        .line1(userRequest.getAddress().getLine1())
+                        .town(userRequest.getAddress().getTown())
+                        .county(userRequest.getAddress().getCounty())
+                        .postcode(userRequest.getAddress().getPostcode())
+                        .createdOn(timestamp)
+                        .lastUpdatedOn(timestamp)
+                        .build()
+                ).phoneNumber(userRequest.getPhoneNumber())
+                .email(userRequest.getEmail())
+                .createdOn(timestamp)
+                .lastUpdatedOn(timestamp)
+                .build();
+
+        when(mockUserRepository.findById(AUTHED_USER_ID)).thenReturn(Optional.of(notUpdatedUser));
+        when(mockUserRepository.save(any(User.class))).thenReturn(updatedUser);
+
+        // WHEN-THEN
+        var expectedResponse = new UserResponse(
+                updatedUser.getId(),
+                updatedUser.getName(),
+                new CreateUserRequestAddress(
+                        updatedUser.getAddress().getLine1(),
+                        updatedUser.getAddress().getTown(),
+                        updatedUser.getAddress().getCounty(),
+                        updatedUser.getAddress().getPostcode()
+                ),
+                updatedUser.getPhoneNumber(),
+                updatedUser.getEmail(),
+                OffsetDateTime.ofInstant(timestamp, ZoneId.systemDefault()),
+                OffsetDateTime.ofInstant(timestamp, ZoneId.systemDefault())
+        );
+
+        mockMvc.perform(patch(USER_URL + "/" + AUTHED_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN)
+                        .content(objectMapper.writeValueAsString(userRequest)))
+                .andExpect(status().is(200))
+                .andExpect(content().json(objectMapper.writeValueAsString(expectedResponse)));
+    }
+
+
+    // Scenario: User wants to update the user details of another user
+    @Test
+    void should_notUpdateUser_when_otherUserIdSuppliedAndAuthed() throws Exception {
+        // GIVEN
+        var userRequest = new UpdateUserRequest();
+        userRequest.setName("Updated Test User");
+        userRequest.setAddress(new CreateUserRequestAddress());
+        userRequest.getAddress().setLine1("Updated line1");
+        userRequest.getAddress().setTown("Updated town");
+        userRequest.getAddress().setCounty("Updated county");
+        userRequest.getAddress().setPostcode("Updated postcode");
+        userRequest.setPhoneNumber("0987654321");
+        userRequest.setEmail("your@email.com");
+
+        // WHEN-THEN
+        mockMvc.perform(patch(USER_URL + "/" + OTHER_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN)
+                        .content(objectMapper.writeValueAsString(userRequest)))
+                .andExpect(status().is(403))
+                .andExpect(jsonPath("$.message").value("The user is not allowed to access the transaction"));
+    }
+
+
+    // Scenario: User wants to update the details of a none-existent user
+    @Test
+    void should_notUpdateUser_when_userNotExistsAndAuthed() throws Exception {
+        // GIVEN
+        var userRequest = new UpdateUserRequest();
+        userRequest.setName("Updated Test User");
+        userRequest.setAddress(new CreateUserRequestAddress());
+        userRequest.getAddress().setLine1("Updated line1");
+        userRequest.getAddress().setTown("Updated town");
+        userRequest.getAddress().setCounty("Updated county");
+        userRequest.getAddress().setPostcode("Updated postcode");
+        userRequest.setPhoneNumber("0987654321");
+        userRequest.setEmail("your@email.com");
+
+        // WHEN-THEN
+        when(mockUserRepository.findById(AUTHED_USER_ID)).thenReturn(Optional.empty());
+
+        mockMvc.perform(patch(USER_URL + "/" + AUTHED_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN)
+                        .content(objectMapper.writeValueAsString(userRequest)))
+                .andExpect(status().is(404))
+                .andExpect(jsonPath("$.message").value("User was not found"));
+    }
+
+    /*
+        DELETE A USER SCENARIOS
+     */
+
+    // Scenario: User wants to delete their user details
+    @Test
+    void should_deleteUser_when_validDetailsSuppliedAndAuthed() throws Exception {
+        // GIVEN-WHEN-THEN
+
+        when(mockUserRepository.existsById(AUTHED_USER_ID)).thenReturn(true);
+        when(mockBankAccountRepository.existsByUserId(AUTHED_USER_ID)).thenReturn(false);
+
+        mockMvc.perform(delete(USER_URL + "/" + AUTHED_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN))
+                .andExpect(status().is(204));
+    }
+
+
+    // Scenario: User wants to delete their user details, and they have a bank account
+    @Test
+    void should_notDeleteUser_when_userHasBankAccountsAndAuthed() throws Exception {
+        // GIVEN-WHEN-THEN
+
+        when(mockUserRepository.existsById(AUTHED_USER_ID)).thenReturn(true);
+        when(mockBankAccountRepository.existsByUserId(AUTHED_USER_ID)).thenReturn(true);
+
+        mockMvc.perform(delete(USER_URL + "/" + AUTHED_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN))
+                .andExpect(status().is(409))
+                .andExpect(jsonPath("$.message").value("A user cannot be deleted when they are associated with a bank account"));
+    }
+
+    // Scenario: User wants to delete the user details of another user
+    @Test
+    void should_notDeleteUser_when_otherUserIdSuppliedAndAuthed() throws Exception {
+        // GIVEN-WHEN-THEN
+        mockMvc.perform(delete(USER_URL + "/" + OTHER_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN))
+                .andExpect(status().is(403))
+                .andExpect(jsonPath("$.message").value("The user is not allowed to access the transaction"));
+    }
+
+    // Scenario: User wants to delete the user details of a none-existent user
+    @Test
+    void should_notDeleteUser_when_userDoesNotExistAndAuthed() throws Exception {
+        // GIVEN-WHEN-THEN
+        when(mockUserRepository.findById(AUTHED_USER_ID)).thenReturn(Optional.empty());
+
+        mockMvc.perform(delete(USER_URL + "/" + AUTHED_USER_ID)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + DUMMY_TOKEN))
+                .andExpect(status().is(404))
+                .andExpect(jsonPath("$.message").value("User was not found"));
     }
 
 
 
-    // TODO: UPDATE USER SCENARIOS
-    @Test
-    void updateUserByID() {
-    }
 }

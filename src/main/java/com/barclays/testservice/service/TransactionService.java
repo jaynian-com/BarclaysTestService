@@ -1,7 +1,10 @@
 package com.barclays.testservice.service;
 
+import com.barclays.testservice.exception.InsufficientFundsException;
 import com.barclays.testservice.exception.TransactionNotFoundException;
+import com.barclays.testservice.exception.UserNotAllowedException;
 import com.barclays.testservice.model.Transaction;
+import com.barclays.testservice.repository.BankAccountRepository;
 import com.barclays.testservice.repository.TransactionRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,7 @@ public class TransactionService {
     private static final String TRANS_ID_PREFIX = "tan-";
 
     private final TransactionRepository transactionRepository;
+    private final BankAccountRepository bankAccountRepository;
     private final AccountService accountService;
 
     public Transaction createTransaction(Transaction newTransaction, String accountNumber, String authUserId) {
@@ -22,7 +26,29 @@ public class TransactionService {
 
         newTransaction.setId(getNextTransactionId());
         newTransaction.setAccountNumber(bankAccount.getAccountNumber());
-        return transactionRepository.save(newTransaction);
+
+        if(newTransaction.getType().equals("deposit")) {
+
+            bankAccount.setBalance(bankAccount.getBalance() + newTransaction.getAmount());
+            bankAccountRepository.save(bankAccount);
+
+            return transactionRepository.save(newTransaction);
+
+        } else if(newTransaction.getType().equals("withdrawal")) {
+
+            if(bankAccount.getBalance() < newTransaction.getAmount()) {
+                throw new InsufficientFundsException();
+            } else {
+
+                bankAccount.setBalance(bankAccount.getBalance() - newTransaction.getAmount());
+                bankAccountRepository.save(bankAccount);
+
+                return transactionRepository.save(newTransaction);
+            }
+        } else {
+            throw new UserNotAllowedException();
+        }
+
     }
 
     public Transaction getTransactionByIdAndAccountNumber(String accountNumber, String transactionId, String authUserId) {
@@ -37,7 +63,6 @@ public class TransactionService {
 
         return transactionRepository.findByAccountNumber(bankAccount.getAccountNumber());
     }
-
 
     private String getNextTransactionId() {
         // NOT SURE WHY OPENAPI SCHEMA ONLY ALLOWS ONE CHARACTER

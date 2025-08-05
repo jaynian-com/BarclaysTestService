@@ -37,6 +37,14 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UserHasAccountsException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotAllowed(UserHasAccountsException e) {
+        return new ResponseEntity<>(
+                new ErrorResponse("A user cannot be deleted when they are associated with a bank account"),
+                HttpStatus.valueOf(409)
+        );
+    }
+
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException e) {
         return new ResponseEntity<>(
@@ -58,6 +66,14 @@ public class APIExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(
                 new ErrorResponse("Transaction was not found"),
                 HttpStatus.valueOf(404)
+        );
+    }
+
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<ErrorResponse> handleBankAccountNotFound(InsufficientFundsException e) {
+        return new ResponseEntity<>(
+                new ErrorResponse("Insufficient funds to process transaction"),
+                HttpStatus.valueOf(422)
         );
     }
 

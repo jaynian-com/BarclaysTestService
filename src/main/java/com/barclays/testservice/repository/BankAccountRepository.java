@@ -11,4 +11,5 @@ public interface BankAccountRepository extends CrudRepository<BankAccount, Strin
     Long getNextSequenceValue();
 
     List<BankAccount> findByUserId(String userId);
+    boolean existsByUserId(String userId);
 }

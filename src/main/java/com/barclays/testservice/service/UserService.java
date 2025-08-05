@@ -1,5 +1,6 @@
 package com.barclays.testservice.service;
 
+import com.barclays.testservice.exception.UserHasAccountsException;
 import com.barclays.testservice.exception.UserNotAllowedException;
 import com.barclays.testservice.exception.UserNotFoundException;
 import com.barclays.testservice.model.User;
@@ -18,6 +19,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
+    private final AccountService accountService;
     private final PasswordEncoder passwordEncoder;
 
 
@@ -61,6 +63,11 @@ public class UserService {
 
         if(!userRepository.existsById(userId)) {
             throw new UserNotFoundException();
+        }
+
+        // If a user has bank accounts, we can't delete
+        if(accountService.checkUserHasBankAccounts(userId)) {
+            throw new UserHasAccountsException();
         }
 
         userRepository.deleteById(userId);

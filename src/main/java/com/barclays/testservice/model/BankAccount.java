@@ -8,7 +8,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -37,7 +36,7 @@ public class BankAccount {
     private String sortCode;
 
     @Column(nullable = false)
-    private BigDecimal balance;
+    private Double balance;
 
     @Column(nullable = false)
     private String currency;
